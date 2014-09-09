@@ -16,9 +16,8 @@ module JSON =
 module Spec =
   type Value<'x> = | Value
 
-  type Value<'x> with
-    static member ( |>> ) (_: Value<'x>, _: 'x -> 'y) : Value<'y> = failwith "XXX"
-    static member ( <|> ) (_: Value<'x>, _: Value<'x>) : Value<'x> = failwith "XXX"
+  let ( |>> ) (_: Value<'x>) (_: 'x -> 'y) : Value<'y> = failwith "XXX"
+  let ( <|> ) (_: Value<'x>) (_: Value<'x>) : Value<'x> = failwith "XXX"
 
   let List (_: Value<'x>) : Value<list<'x>> = failwith "XXX"
   let String: Value<string> = Value

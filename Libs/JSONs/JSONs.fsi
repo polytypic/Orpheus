@@ -14,9 +14,10 @@ module JSON =
   val pretty: Value -> PPrint.Doc
 
 module Spec =
-  type [<Sealed>] Value<'x> =
-    static member ( |>> ): Value<'x> * ('x -> 'y) -> Value<'y>
-    static member ( <|> ): Value<'x> * Value<'x> -> Value<'x>
+  type Value<'x>
+
+  val ( |>> ): Value<'x> -> ('x -> 'y) -> Value<'y>
+  val ( <|> ): Value<'x> -> Value<'x> -> Value<'x>
 
   val List: Value<'x> -> Value<list<'x>>
   val String: Value<string>
@@ -24,7 +25,7 @@ module Spec =
   val Bool: Value<bool>
   val Null: Value<unit>
 
-  type [<Sealed>] Fields<'x>
+  type Fields<'x>
 
   val ( /> ): Fields<'x> -> ('x -> 'y) -> Fields<'y>
   val ( <*> ): Fields<'x -> 'y> -> Fields<'x> -> Fields<'y>
