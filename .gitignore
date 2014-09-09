@@ -1,0 +1,11 @@
+*.exe
+*.nupkg
+*.suo
+*~
+.\#*
+.recall
+\#*\#
+bin
+gh-pages
+obj
+packages
