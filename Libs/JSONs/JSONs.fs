@@ -6,7 +6,7 @@ open System
 module JSON =
   open FParsec.Primitives
   open FParsec.CharParsers
-  
+
   type Value =
    | Obj of Map<string, Value>
    | List of list<Value>
@@ -51,10 +51,11 @@ module JSON =
       unescaped ()
     let pFlt =
        tok (numberLiteral
-             (NumberLiteralOptions.AllowMinusSign
-             ||| NumberLiteralOptions.AllowFraction
-             ||| NumberLiteralOptions.AllowExponent)
-             "number" |>> fun n -> n.String |> float)
+             (NumberLiteralOptions.AllowMinusSign |||
+              NumberLiteralOptions.AllowFraction |||
+              NumberLiteralOptions.AllowExponent)
+             "number"
+            |>> fun n -> n.String |> float)
     let (pVal, pVal') = createParserForwardedToRef ()
     let pObj = p"{" >>. sepBy (pStr .>> p":" .>>. pVal) (p",") .>> p"}"
     let pList = p"[" >>. sepBy pVal (p",") .>> p"]"
@@ -72,7 +73,55 @@ module JSON =
      ] "value"
     ignored >>. pVal
 
-  let pretty (v: Value) : PPrint.Doc = failwith "XXX"
+  open PPrint
+
+  let pNull = txt "null"
+  let pTrue = txt "true"
+  let pFalse = txt "false"
+  let pString s =
+    let b = StringBuilder ()
+    let appc (c: char) = b.Append c |> ignore
+    let apps (s: string) = b.Append s |> ignore
+    appc '"'
+    for c in s do
+      match c with
+       | '\"' -> apps "\\\""
+       | '\\' -> apps "\\\\"
+       | '\b' -> apps "\\b"
+       | '\f' -> apps "\\f"
+       | '\n' -> apps "\\n"
+       | '\r' -> apps "\\r"
+       | '\t' -> apps "\\t"
+       | _ ->
+         let inline isPrintable c = 32 <= int c && int c <= 255
+         if isPrintable c then
+           appc c
+         else
+           let inline d x =
+             let c = (x >>> 12) &&& 0xF
+             if c < 10 then
+               appc (char (int '0' + c))
+             else
+               appc (char (int 'a' + c - 10))
+             x <<< 4
+           apps "\\u"
+           int c |> d |> d |> d |> d |> ignore
+    appc '"'
+    b.ToString () |> txt
+  let rec pretty (v: Value) : PPrint.Doc =
+    match v with
+     | Null -> pNull
+     | Bool true -> pTrue
+     | Bool false -> pFalse
+     | Float f -> fmt "%.17g" f
+     | String s -> pString s
+     | List vs ->
+       vs |> Seq.map pretty |> punctuate comma |> vsep |> brackets |> gnest 1
+     | Obj kvs ->
+       kvs
+       |> Seq.map (fun kv ->
+          gnest 1 (pString kv.Key <^> colon <.> pretty kv.Value))
+       |> punctuate comma |> vsep |> braces |> gnest 1
 
 module Spec =
   type Value<'x> = | Value
