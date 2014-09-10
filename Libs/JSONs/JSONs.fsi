@@ -16,6 +16,7 @@ module JSON =
 module Spec =
   type Value<'x>
 
+  val explain: Value<'x> -> PPrint.Doc
   val extract: Value<'x> -> JSON.Value -> 'x
 
   val ( |>> ): Value<'x> -> ('x -> 'y) -> Value<'y>
