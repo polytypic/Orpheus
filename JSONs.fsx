@@ -1,6 +1,6 @@
 #I __SOURCE_DIRECTORY__ ;;
 
-#r "Libs\\JSONs\\bin\\Release\\JSONs.dll" ;;
+#r "Libs/JSONs/bin/Release/JSONs.dll" ;;
 
 open System ;;
 open JSONs.Spec ;;
@@ -25,7 +25,7 @@ module Example =
       dimensions: option<Dimensions>
     }
 
-  let Dimensions =
+  let Dimensions : Value<Dimensions> =
     Obj (con (fun length width height ->
                 {length = length; width = width; height = height})
          <*> req "length" Float /> gt 0.0
@@ -33,9 +33,10 @@ module Example =
          <*> req "height" Float /> gt 0.0
          </> others /> none)
 
-  let Product =
+  let Product : Value<Product> =
     Obj (con (fun id name price tags dimensions ->
-                {id = id; name = name; price = price; tags = tags; dimensions = dimensions})
+                {id = id; name = name; price = price; tags = tags;
+                 dimensions = dimensions})
          <*> req "id" Int
          <*> req "name" String
          <*> req "price" Float /> gt 0.0
@@ -43,4 +44,5 @@ module Example =
          <*> opt "dimensions" Dimensions
          </> others /> none)
 
-  let ProductSet = List Product
+  let ProductSet : Value<list<Product>> =
+    List Product

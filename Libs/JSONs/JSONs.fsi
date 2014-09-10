@@ -16,6 +16,8 @@ module JSON =
 module Spec =
   type Value<'x>
 
+  val extract: Value<'x> -> JSON.Value -> 'x
+
   val ( |>> ): Value<'x> -> ('x -> 'y) -> Value<'y>
   val ( <|> ): Value<'x> -> Value<'x> -> Value<'x>
 
