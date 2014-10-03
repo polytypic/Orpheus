@@ -2,7 +2,7 @@
 
 set -e
 
-nuget restore JSONs.sln -Verbosity quiet
+nuget restore Orpheus.sln -Verbosity quiet
 
 function build () {
     xbuild /nologo /verbosity:quiet /p:Configuration=$1
