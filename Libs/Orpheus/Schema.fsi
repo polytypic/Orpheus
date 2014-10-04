@@ -2,55 +2,60 @@
 
 namespace Orpheus
 
+open PPrint
+
 type Schema<'x>
 type Fields<'x>
 
-exception Constraint
-
-type Schema<'x> with
-  static member (|?|): Schema<'x> * PPrint.Doc -> Schema<'x>
-
-  static member (|>>): Schema<'x> * ('x -> 'y) -> Schema<'y>
-
-  static member (.&.): Schema<'x> * Schema<'x> -> Schema<'x>
-  static member (.|.): Schema<'x> * Schema<'x> -> Schema<'x>
-
-type Schema<'x when 'x: comparison> with
-  static member (.<.): 'x * Schema<'x> -> Schema<'x>
-  static member (.<.): Schema<'x> * 'x -> Schema<'x>
-  static member (.<=.): 'x * Schema<'x> -> Schema<'x>
-  static member (.<=.): Schema<'x> * 'x -> Schema<'x>
-  static member (.>.): 'x * Schema<'x> -> Schema<'x>
-  static member (.>.): Schema<'x> * 'x -> Schema<'x>
-  static member (.>=.): 'x * Schema<'x> -> Schema<'x>
-  static member (.>=.): Schema<'x> * 'x -> Schema<'x>
-
-type Schema<'x when 'x: equality> with
-  static member (.<>.): 'x * Schema<'x> -> Schema<'x>
-  static member (.<>.): Schema<'x> * 'x -> Schema<'x>
-  static member (.=.): 'x * Schema<'x> -> Schema<'x>
-  static member (.=.): Schema<'x> * 'x -> Schema<'x>
+exception Constraint of Doc
 
 module Schema =
-  val explain: Schema<'x> -> PPrint.Doc
+  val explain: Schema<'x> -> Doc
   val extract: Schema<'x> -> JSON -> 'x
 
-  val JSON: Schema<JSON>
+  val json: Schema<JSON>
 
-  val List: Schema<'x> -> Schema<list<'x>>
-  val String: Schema<string>
-  val Number: Schema<string>
-  val Bool: Schema<bool>
-  val Null: Schema<unit>
+  val list: Schema<'x> -> Schema<list<'x>>
+  val string: Schema<string>
+  val number: Schema<string>
+  val bool: Schema<bool>
+  val nil: Schema<unit>
+
+  val float: Schema<float>
+  val int: Schema<int>
+
+  val case: string -> 'x -> Schema<'x>
+
+  val (|?|): Schema<'x> -> Doc -> Schema<'x>
+
+  val (.&.): Schema<'x> -> Schema<'x> -> Schema<'x>
+  val (.|.): Schema<'x> -> Schema<'x> -> Schema<'x>
+
+  val (|>>): Schema<'x> -> ('x -> 'y) -> Schema<'y>
+
+  val  ( <.):        'x  -> Schema<'x> -> Schema<'x> when 'x: comparison
+  val  (.< ): Schema<'x> ->        'x  -> Schema<'x> when 'x: comparison
+  val ( <=.):        'x  -> Schema<'x> -> Schema<'x> when 'x: comparison
+  val (.<= ): Schema<'x> -> 'x         -> Schema<'x> when 'x: comparison
+  val  ( >.):        'x  -> Schema<'x> -> Schema<'x> when 'x: comparison
+  val  (.> ): Schema<'x> ->        'x  -> Schema<'x> when 'x: comparison
+  val ( >=.):        'x  -> Schema<'x> -> Schema<'x> when 'x: comparison
+  val (.>= ): Schema<'x> ->        'x  -> Schema<'x> when 'x: comparison
+
+  val ( <>.):        'x  -> Schema<'x> -> Schema<'x> when 'x: equality
+  val (.<> ): Schema<'x> ->        'x  -> Schema<'x> when 'x: equality
+  val  ( =.):        'x  -> Schema<'x> -> Schema<'x> when 'x: equality
+  val  (.= ): Schema<'x> ->        'x  -> Schema<'x> when 'x: equality
 
   val lift: 'x -> Fields<'x>
-  val (</>): Fields<'x> -> Fields<unit> -> Fields<'x>
-  val (<*>): Fields<'x -> 'y> -> Fields<'x> -> Fields<'y>
 
-  val required: string -> Schema<'x> -> Fields<'x>
-  val optional: string -> Schema<'x> -> Fields<option<'x>>
-  val defaults: string -> Schema<'x> -> 'x -> Fields<'x>
+  val (<*>): Fields<'x -> 'y> -> Fields<'x> -> Fields<'y>
+  val (</>): Fields<'x> -> Fields<unit> -> Fields<'x>
+
+  val req: string ->       Schema<'x> -> Fields<       'x >
+  val opt: string ->       Schema<'x> -> Fields<option<'x>>
+  val def: string -> 'x -> Schema<'x> -> Fields<       'x >
 
   val others: Fields<Map<string, JSON>>
 
-  val Object: Fields<'x> -> Schema<'x>
+  val obj: Fields<'x> -> Schema<'x>
