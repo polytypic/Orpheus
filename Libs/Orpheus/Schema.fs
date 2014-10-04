@@ -5,25 +5,34 @@ namespace Orpheus
 open System
 open PPrint
 
-type Schema<'x> = | Schema
-type Fields<'x> = | Fields
+type Schema<'x> = {
+    SchemaDoc: Doc
+  }
+type Fields<'x> = {
+    FieldDocs: list<Doc>
+  }
 
 exception Constraint of Doc
 
 module Schema =
-  let explain (_: Schema<'x>) : Doc = failwith "XXX"
+  let explain (xS: Schema<'x>) : Doc = xS.SchemaDoc
   let extract (_: Schema<'x>) (_: JSON) : 'x = failwith "XXX"
 
-  let json: Schema<JSON> = Schema
+  let json: Schema<JSON> = {SchemaDoc = txt "json"}
 
-  let (|?|) (_: Schema<'x>) (_: Doc) : Schema<'x> = Schema
+  let (|?|) xS explain =
+    {xS with SchemaDoc = explain}
 
-  let (|>>) (_: Schema<'x>) (_: 'x -> 'y) : Schema<'y> = Schema
+  let (|>>) (xS: Schema<'x>) (_: 'x -> 'y) : Schema<'y> =
+    {SchemaDoc = xS.SchemaDoc}
 
-  let (.&.) (_: Schema<'x>) (_: Schema<'x>) : Schema<'x> = Schema
-  let (.|.) (_: Schema<'x>) (_: Schema<'x>) : Schema<'x> = Schema
+  let (.&.) (xS1: Schema<'x>) (xS2: Schema<'x>) : Schema<'x> =
+    {SchemaDoc = xS1.SchemaDoc <+> txt "&" <.> xS2.SchemaDoc}
+  let (.|.) (xS1: Schema<'x>) (xS2: Schema<'x>) : Schema<'x> =
+    {SchemaDoc = xS1.SchemaDoc <+> txt "|" <.> xS2.SchemaDoc}
 
-  let list (_: Schema<'x>) : Schema<list<'x>> = Schema
+  let list (xS: Schema<'x>) : Schema<list<'x>> =
+    {SchemaDoc = xS.SchemaDoc <^> comma <.> txt "..." |> brackets |> gnest 1}
 
   let mk label get =
     json
@@ -55,8 +64,12 @@ module Schema =
     if op l r
     then x
     else fmt "expected %A %s %A" l t r |> Constraint |> raise
-  let cmpL op t l rS = rS |>> fun r -> cmp op t l r r
-  let cmpR op t lS r = lS |>> fun l -> cmp op t l r l
+  let cmpL op t l rS =
+    rS |>> fun r -> cmp op t l r r
+       |?| (fmt "%A" l <+> txt t <+> rS.SchemaDoc)
+  let cmpR op t lS r =
+    lS |>> fun l -> cmp op t l r l
+       |?| (lS.SchemaDoc <+> txt t <+> fmt "%A" r)
 
   let ( <.) l rS = cmpL (<) "<" l rS
   let (.< ) lS r = cmpR (<) "<" lS r
@@ -75,20 +88,40 @@ module Schema =
     if exp = got
     then got
     else fmt "expected %A, but got %A" exp got |> Constraint |> raise
-  let ( =.) l rS = rS |>> fun r -> eq l r
-  let (.= ) lS r = lS |>> fun l -> eq r l
+  let ( =.) l rS =
+    rS |>> fun r -> eq l r
+       |?| fmt "%A" l
+  let (.= ) lS r =
+    lS |>> fun l -> eq r l
+       |?| fmt "%A" r
 
   let case s c = string .= s >>% c
 
-  let lift (_: 'x) : Fields<'x> = Fields
+  let lift (_: 'x) : Fields<'x> = {FieldDocs = []}
 
-  let (</>) (_: Fields<'x>) (_: Fields<unit>) : Fields<'x> = Fields
-  let (<*>) (_: Fields<'x -> 'y>) (_: Fields<'x>) : Fields<'y> = Fields
+  let (</>) (xF: Fields<'x>) (uF: Fields<unit>) : Fields<'x> =
+    {FieldDocs = uF.FieldDocs @ xF.FieldDocs}
+  let (<*>) (x2yF: Fields<'x -> 'y>) (xF: Fields<'x>) : Fields<'y> =
+    {FieldDocs = xF.FieldDocs @ x2yF.FieldDocs}
 
-  let req (_: string) (_: Schema<'x>) : Fields<'x> = Fields
-  let opt (_: string) (_: Schema<'x>) : Fields<option<'x>> = Fields
-  let def (_: string) (_: 'x) (_: Schema<'x>) : Fields<'x> = Fields
+  let req (key: string) (xS: Schema<'x>) : Fields<'x> =
+    {FieldDocs = [gnest 2 (fmt "%A" key <^> colon <+> xS.SchemaDoc)]}
+  let opt (key: string) (xS: Schema<'x>) : Fields<option<'x>> =
+    {FieldDocs = [gnest 1 (brackets (nest 2 (fmt "%A" key <^> colon <+> xS.SchemaDoc)))]}
+  let def (key: string) (x: 'x) (xS: Schema<'x>) : Fields<'x> =
+    {FieldDocs = [gnest 1 (brackets (nest 2 (fmt "%A" key <^> colon <+> xS.SchemaDoc <+> equals <+> fmt "%A" x)))]}
 
-  let others: Fields<Map<string, JSON>> = Fields
+  let others: Fields<Map<string, JSON>> =
+    {FieldDocs = [txt "..."]}
 
-  let obj (_: Fields<'x>) : Schema<'x> = Schema
+  let obj (xF: Fields<'x>) : Schema<'x> =
+    {SchemaDoc =
+       xF.FieldDocs
+       |> List.rev
+       |> punctuate comma
+       |> vsep
+       |> fun d -> linebreak <^> d
+       |> nest 2
+       |> fun d -> d <^> linebreak
+       |> group
+       |> braces}

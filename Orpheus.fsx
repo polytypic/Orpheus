@@ -7,6 +7,7 @@
 #r "Libs/Orpheus/bin/Release/PPrint.dll"
 #r "Libs/Orpheus/bin/Release/Orpheus.dll"
 
+open PPrint
 open System
 open Orpheus
 open Orpheus.Schema
