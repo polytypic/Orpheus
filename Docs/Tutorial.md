@@ -1,1 +1,1 @@
-# Orpheus or How to parse JSON like it meant something
+# Orpheus or parse JSON like it meant something
