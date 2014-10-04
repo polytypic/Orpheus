@@ -3,17 +3,17 @@
 namespace Orpheus
 
 type JSON =
- | Object of Map<string, JSON>
+ | Obj of Map<string, JSON>
  | List of list<JSON>
  | String of string
  | Number of string
  | Bool of bool
- | Null
+ | Nil
 
 [<AutoOpen>]
 module Basic =
   val show: JSON -> string
   val read: string -> JSON
 
-  val mkParser: unit -> FParsec.Primitives.Parser<JSON, 's>
   val pretty: JSON -> PPrint.Doc
+  val mkParser: unit -> FParsec.Primitives.Parser<JSON, 's>
