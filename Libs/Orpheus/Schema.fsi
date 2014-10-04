@@ -5,13 +5,35 @@ namespace Orpheus
 type Schema<'x>
 type Fields<'x>
 
+exception Constraint
+
+type Schema<'x> with
+  static member (|?|): Schema<'x> * PPrint.Doc -> Schema<'x>
+
+  static member (|>>): Schema<'x> * ('x -> 'y) -> Schema<'y>
+
+  static member (.&.): Schema<'x> * Schema<'x> -> Schema<'x>
+  static member (.|.): Schema<'x> * Schema<'x> -> Schema<'x>
+
+type Schema<'x when 'x: comparison> with
+  static member (.<.): 'x * Schema<'x> -> Schema<'x>
+  static member (.<.): Schema<'x> * 'x -> Schema<'x>
+  static member (.<=.): 'x * Schema<'x> -> Schema<'x>
+  static member (.<=.): Schema<'x> * 'x -> Schema<'x>
+  static member (.>.): 'x * Schema<'x> -> Schema<'x>
+  static member (.>.): Schema<'x> * 'x -> Schema<'x>
+  static member (.>=.): 'x * Schema<'x> -> Schema<'x>
+  static member (.>=.): Schema<'x> * 'x -> Schema<'x>
+
+type Schema<'x when 'x: equality> with
+  static member (.<>.): 'x * Schema<'x> -> Schema<'x>
+  static member (.<>.): Schema<'x> * 'x -> Schema<'x>
+  static member (.=.): 'x * Schema<'x> -> Schema<'x>
+  static member (.=.): Schema<'x> * 'x -> Schema<'x>
+
 module Schema =
   val explain: Schema<'x> -> PPrint.Doc
   val extract: Schema<'x> -> JSON -> 'x
-
-  val (|>>): Schema<'x> -> ('x -> 'y) -> Schema<'y>
-  val (<|>): Schema<'x> -> Schema<'x> -> Schema<'x>
-  val (<?>): Schema<'x> -> string -> Schema<'x>
 
   val JSON: Schema<JSON>
 
@@ -21,11 +43,9 @@ module Schema =
   val Bool: Schema<bool>
   val Null: Schema<unit>
 
-  val (/>): Fields<'x> -> ('x -> 'y) -> Fields<'y>
-  val (<*>): Fields<'x -> 'y> -> Fields<'x> -> Fields<'y>
-  val (</>): Fields<'x> -> Fields<unit> -> Fields<'x>
-
   val lift: 'x -> Fields<'x>
+  val (</>): Fields<'x> -> Fields<unit> -> Fields<'x>
+  val (<*>): Fields<'x -> 'y> -> Fields<'x> -> Fields<'y>
 
   val required: string -> Schema<'x> -> Fields<'x>
   val optional: string -> Schema<'x> -> Fields<option<'x>>

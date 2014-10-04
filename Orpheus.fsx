@@ -11,42 +11,46 @@ open System
 open Orpheus
 open Orpheus.Schema
 
+[<AutoOpen>]
+module Defs =
+  open PPrint
+
+  let Float = Number |>> float |?| txt "float"
+  let Int = Number |>> int |?| txt "int"
+
+  let Case (s: string) (c: 'c) : Schema<'c> = String .=. s |>> fun _ -> c
+
+  let Regex = String // XXX
+
 // This example is inspired by http://json-schema.org/example1.html
 module ProductExample =
-  let gt (min: float) x = if min < x then x else failwith "gt"
-  let none m = if Map.isEmpty m then () else failwith "none"
-  let Float = Number |>> float
-
-  let Int = Number |>> int
 
   type Dimensions = {
-      length: float
-      width: float
-      height: float
+      Length: float
+      Width: float
+      Height: float
     }
 
   type Product = {
-      id: int
-      name: string
-      price: float
-      tags: list<string>
-      dimensions: option<Dimensions>
+      Id: int
+      Name: string
+      Price: float
+      Tags: list<string>
+      Dimensions: option<Dimensions>
     }
 
   let Dimensions : Schema<Dimensions> =
-    Object (lift <| fun length width height ->
-              {length = length; width = width; height = height}
-       <*> required "length" Float /> gt 0.0
-       <*> required "width"  Float /> gt 0.0
-       <*> required "height" Float /> gt 0.0)
+    Object (lift <| fun l w h -> {Length = l; Width = w; Height = h}
+        <*> required "length" (Float .>. 0.0)
+        <*> required "width"  (Float .>. 0.0)
+        <*> required "height" (Float .>. 0.0))
 
   let Product : Schema<Product> =
-    Object (lift <| fun id name price tags dimensions ->
-              {id = id; name = name; price = price; tags = tags;
-               dimensions = dimensions}
+    Object (lift <| fun i n p t d ->
+              {Id = i; Name = n; Price = p; Tags = t; Dimensions = d}
        <*> required "id" Int
        <*> required "name" String
-       <*> required "price" Float /> gt 0.0
+       <*> required "price" (Float .>. 0.0)
        <*> defaults "tags" (List String) []
        <*> optional "dimensions" Dimensions)
 
@@ -55,23 +59,8 @@ module ProductExample =
 
 // This example is inspired by http://json-schema.org/example2.html
 module MountExample =
-  let (=?) xS x = xS |>> fun x' -> if x' = x then x else failwith "/?"
-  let (=%) xS y = xS |>> fun _ -> y
-  let Case s c = String =? s =% c
-
-  let Int = Number |>> int
-  let Regex = String // XXX
-  let between lo hi x = if lo <= x && x <= lo then x else failwith "between"
-
   type FSType = EXT3 | EXT4 | BTRFS
-  let FSType =  Case "ext3"  EXT3
-            <|> Case "ext4"  EXT4
-            <|> Case "btrfs" BTRFS
-
   type NFSServer = HostName | IPV4 | IPV6
-  let NFSServer =  Case "host-name" HostName
-               <|> Case "ipv4"      IPV4
-               <|> Case "ipv6"      IPV6
 
   type Storage =
     | DiskDevice of string
@@ -79,40 +68,43 @@ module MountExample =
     | NFS of string * NFSServer
     | TMPFS of int
 
-  let DiskDevice' =
-    Object (lift DiskDevice
-        </> required "type" (Case "disk" ())
-        <*> required "device" Regex)
-  let DiskUUID' =
-    Object (lift DiskUUID
-        </> required "type" (Case "disk" ())
-        <*> required "label" Regex)
-  let NFS' =
-    Object (lift <| fun path server -> NFS (path, server)
-        </> required "type" (Case "nfs" ())
-        <*> required "remotePath" Regex
-        <*> required "server" NFSServer)
-  let TMPFS' =
-    Object (lift TMPFS
-        </> required "type" (Case "tmpfs" ())
-        <*> required "sizeInMB" Int /> between 16 512)
-
-  let Storage =  DiskDevice'
-             <|> DiskUUID'
-             <|> NFS'
-             <|> TMPFS'
-
   type Mount = {
-      storage: Storage
-      fstype: option<FSType>
-      readonly: option<bool>
-      options: list<string>
+      Storage: Storage
+      FSType: option<FSType>
+      Readonly: option<bool>
+      Options: list<string>
     }
 
+  let FSType = Case "ext3"  EXT3
+            .|.Case "ext4"  EXT4
+            .|.Case "btrfs" BTRFS
+
+  let NFSServer = Case "host-name" HostName
+               .|.Case "ipv4"      IPV4
+               .|.Case "ipv6"      IPV6
+
+  let DiskDevice =
+    Object (required "type" (Case "disk" DiskDevice)
+        <*> required "device" Regex)
+  let DiskUUID =
+    Object (required "type" (Case "disk" DiskUUID)
+        <*> required "label" Regex)
+  let NFS =
+    Object (required "type" (Case "nfs" <| fun p s -> NFS (p, s))
+        <*> required "remotePath" Regex
+        <*> required "server" NFSServer)
+  let TMPFS =
+    Object (required "type" (Case "tmpfs" TMPFS)
+        <*> required "sizeInMB" (16 .<=. Int .<=. 512))
+
+  let Storage = DiskDevice
+             .|.DiskUUID
+             .|.NFS
+             .|.TMPFS
+
   let Mount =
-    Object (lift <| fun storage fstype readonly options ->
-              {storage = storage; fstype = fstype;
-               readonly = readonly; options = options}
+    Object (lift <| fun s f r o ->
+              {Storage = s; FSType = f; Readonly = r; Options = o}
         <*> required "storage" Storage
         <*> optional "fstype" FSType
         <*> optional "readonly" Bool
